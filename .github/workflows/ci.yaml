@@ -41,15 +41,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.STORK_CI_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+      - name: Get version from Dockerfile
+        id: get_version
+        run: |
+          # Extracts the value of 'LABEL version=...'
+          VERSION=$(grep 'LABEL org.opencontainers.image.version=' Dockerfile | cut -d'=' -f2 | tr -d '"')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         id: push
@@ -57,7 +54,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Generate artifact attestation
